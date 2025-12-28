@@ -9,46 +9,42 @@ const io = socketIo(server, { cors: { origin: "*" } });
 
 app.use(express.static(path.join(__dirname, 'public')));
 
-let rooms = {};
+let rooms = {}; // 儲存所有房間
 
 io.on('connection', (socket) => {
-  console.log('Player connected:', socket.id);
+  console.log('玩家連線:', socket.id);
 
+  // 開房
   socket.on('createRoom', ({ name }) => {
     const roomId = Math.random().toString(36).substr(2, 6).toUpperCase();
     rooms[roomId] = {
       host: socket.id,
-      players: [{ id: socket.id, name, role: null }],
-      maxPlayers: 0,
-      rolesConfig: [],
-      gameState: 'lobby'
+      players: [{ id: socket.id, name, role: null }]
     };
     socket.join(roomId);
-    socket.emit('roomCreated', { roomId, players: rooms[roomId].players });
+    socket.emit('roomCreated', { roomId });
+    io.to(roomId).emit('updatePlayers', rooms[roomId].players.map(p => ({ id: p.id, name: p.name })));
   });
 
+  // 加入房
   socket.on('joinRoom', ({ roomId, name }) => {
     const room = rooms[roomId];
-    if (!room || room.gameState !== 'lobby' || room.players.length >= room.maxPlayers) {
-      socket.emit('joinError', '無法加入');
+    if (!room || room.players.length >= 10) { // 最多10人
+      socket.emit('joinError', '房間滿了或不存在');
       return;
     }
     room.players.push({ id: socket.id, name, role: null });
     socket.join(roomId);
-    io.to(roomId).emit('updatePlayers', room.players.map(p => ({ name: p.name })));
-    socket.emit('joinedRoom', { roomId, players: room.players });
+    io.to(roomId).emit('updatePlayers', room.players.map(p => ({ id: p.id, name: p.name })));
+    socket.emit('joinedRoom', { roomId });
   });
 
-  // 其他事件（設定人數、角色、開始遊戲）類似，簡化版先跑起來
-  // ...（後續可擴充）
-
   socket.on('disconnect', () => {
-    console.log('Player disconnected:', socket.id);
-    // 清理邏輯
+    console.log('玩家斷線:', socket.id);
+    // 簡單清理（可擴充）
   });
 });
 
-const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+server.listen(process.env.PORT || 3000, () => {
+  console.log('伺服器啟動');
 });
