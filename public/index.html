@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <title>一夜狼人殺</title>
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+  <style>
+    body { font-family: Arial; text-align: center; }
+    #lobby, #game { margin: 50px; }
+    input, button { margin: 10px; padding: 10px; }
+  </style>
+</head>
+<body>
+  <div id="lobby">
+    <h1>一夜狼人殺</h1>
+    <button onclick="createRoom()">開新房間</button><br>
+    房間ID: <input id="roomId" placeholder="輸入房間ID"><br>
+    暱稱: <input id="name" placeholder="你的名字"><br>
+    <button onclick="joinRoom()">加入房間</button>
+    <div id="players"></div>
+  </div>
+
+  <div id="game" style="display:none;">
+    <h2>房間: <span id="currentRoom"></span></h2>
+    <div id="status">等待開始...</div>
+  </div>
+
+  <script>
+    const socket = io();
+    let myName, roomId;
+
+    function createRoom() {
+      myName = prompt("你的名字？") || "玩家";
+      socket.emit('createRoom', { name: myName });
+    }
+
+    socket.on('roomCreated', (data) => {
+      roomId = data.roomId;
+      alert(`房間建立！ID: ${roomId}\n分享給朋友加入`);
+      updateUI(data.players);
+    });
+
+    function joinRoom() {
+      roomId = document.getElementById('roomId').value.toUpperCase();
+      myName = document.getElementById('name').value || "玩家";
+      socket.emit('joinRoom', { roomId, name: myName });
+    }
+
+    socket.on('joinedRoom', (data) => {
+      updateUI(data.players);
+    });
+
+    socket.on('updatePlayers', (players) => {
+      updateUI(players);
+    });
+
+    function updateUI(players) {
+      document.getElementById('lobby').style.display = 'none';
+      document.getElementById('game').style.display = 'block';
+      document.getElementById('currentRoom').innerText = roomId;
+      const list = players.map(p => p.name).join('<br>');
+      document.getElementById('players').innerHTML = '<h3>玩家列表：</h3>' + list;
+    }
+  </script>
+</body>
+</html>
