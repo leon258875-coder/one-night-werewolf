@@ -5,61 +5,61 @@
   <title>一夜狼人殺</title>
   <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
   <style>
-    body { font-family: Arial; text-align: center; }
-    #lobby, #game { margin: 50px; }
-    input, button { margin: 10px; padding: 10px; }
+    body { font-family: Arial; text-align: center; margin: 50px; }
+    input, button { margin: 10px; padding: 10px; font-size: 18px; }
+    #players { margin: 20px; font-size: 20px; }
   </style>
 </head>
 <body>
-  <div id="lobby">
-    <h1>一夜狼人殺</h1>
-    <button onclick="createRoom()">開新房間</button><br>
-    房間ID: <input id="roomId" placeholder="輸入房間ID"><br>
-    暱稱: <input id="name" placeholder="你的名字"><br>
-    <button onclick="joinRoom()">加入房間</button>
-    <div id="players"></div>
-  </div>
+  <h1>一夜狼人殺 線上版</h1>
+  <button id="createBtn">開新房間</button><br><br>
+  房間ID: <input id="roomId" placeholder="輸入房間ID"><br>
+  你的名字: <input id="name" placeholder="暱稱"><br>
+  <button id="joinBtn">加入房間</button>
 
-  <div id="game" style="display:none;">
+  <div id="game" style="display:none; margin-top: 50px;">
     <h2>房間: <span id="currentRoom"></span></h2>
-    <div id="status">等待開始...</div>
+    <h3>玩家列表：</h3>
+    <div id="players"></div>
   </div>
 
   <script>
     const socket = io();
-    let myName, roomId;
+    let roomId;
 
-    function createRoom() {
-      myName = prompt("你的名字？") || "玩家";
-      socket.emit('createRoom', { name: myName });
-    }
+    document.getElementById('createBtn').onclick = () => {
+      const name = prompt('你的名字？') || '玩家';
+      socket.emit('createRoom', { name });
+    };
 
     socket.on('roomCreated', (data) => {
       roomId = data.roomId;
-      alert(`房間建立！ID: ${roomId}\n分享給朋友加入`);
-      updateUI(data.players);
+      alert(`房間開好了！ID: ${roomId}\n分享給朋友加入`);
+      showGame(roomId);
     });
 
-    function joinRoom() {
+    document.getElementById('joinBtn').onclick = () => {
       roomId = document.getElementById('roomId').value.toUpperCase();
-      myName = document.getElementById('name').value || "玩家";
-      socket.emit('joinRoom', { roomId, name: myName });
-    }
+      const name = document.getElementById('name').value || '玩家';
+      if (!roomId || !name) return alert('請填完整');
+      socket.emit('joinRoom', { roomId, name });
+    };
 
     socket.on('joinedRoom', (data) => {
-      updateUI(data.players);
+      showGame(data.roomId);
     });
+
+    socket.on('joinError', (msg) => alert(msg));
 
     socket.on('updatePlayers', (players) => {
-      updateUI(players);
+      const list = players.map(p => p.name).join('<br>');
+      document.getElementById('players').innerHTML = list || '等玩家加入...';
     });
 
-    function updateUI(players) {
-      document.getElementById('lobby').style.display = 'none';
+    function showGame(id) {
+      document.querySelectorAll('button, input').forEach(el => el.style.display = 'none');
       document.getElementById('game').style.display = 'block';
-      document.getElementById('currentRoom').innerText = roomId;
-      const list = players.map(p => p.name).join('<br>');
-      document.getElementById('players').innerHTML = '<h3>玩家列表：</h3>' + list;
+      document.getElementById('currentRoom').innerText = id;
     }
   </script>
 </body>
